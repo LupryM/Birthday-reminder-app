@@ -1,101 +1,111 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useCallback } from "react"
-import { X, Check, ZoomIn, ZoomOut, RotateCw } from "lucide-react"
-import { motion } from "framer-motion"
+import { useState, useRef, useCallback } from "react";
+import { X, Check, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ImageCropperProps {
-  imageSrc: string
-  onCropComplete: (croppedBlob: Blob) => void
-  onCancel: () => void
+  imageSrc: string;
+  onCropComplete: (croppedBlob: Blob) => void;
+  onCancel: () => void;
 }
 
-export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCropperProps) {
-  const [scale, setScale] = useState(1)
-  const [rotation, setRotation] = useState(0)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imageRef = useRef<HTMLImageElement | null>(null)
+export function ImageCropper({
+  imageSrc,
+  onCropComplete,
+  onCancel,
+}: ImageCropperProps) {
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-    setIsDragging(true)
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
-    setDragStart({ x: clientX - position.x, y: clientY - position.y })
-  }
+    setIsDragging(true);
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    setDragStart({ x: clientX - position.x, y: clientY - position.y });
+  };
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (!isDragging) return
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+      if (!isDragging) return;
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       setPosition({
         x: clientX - dragStart.x,
         y: clientY - dragStart.y,
-      })
+      });
     },
-    [isDragging, dragStart],
-  )
+    [isDragging, dragStart]
+  );
 
   const handleMouseUp = () => {
-    setIsDragging(false)
-  }
+    setIsDragging(false);
+  };
 
   const handleCrop = () => {
-    const canvas = canvasRef.current
-    if (!canvas || !imageRef.current) return
+    const canvas = canvasRef.current;
+    if (!canvas || !imageRef.current) return;
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    const size = 300
-    canvas.width = size
-    canvas.height = size
+    const size = 400;
+    canvas.width = size;
+    canvas.height = size;
 
-    ctx.fillStyle = "#000"
-    ctx.fillRect(0, 0, size, size)
+    // Clear canvas
+    ctx.clearRect(0, 0, size, size);
 
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-    ctx.clip()
+    // Save context state
+    ctx.save();
 
-    ctx.translate(size / 2, size / 2)
-    ctx.rotate((rotation * Math.PI) / 180)
-    ctx.scale(scale, scale)
-    ctx.translate(-size / 2 + position.x / 2, -size / 2 + position.y / 2)
+    // Create circular clipping path
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    ctx.clip();
 
-    const img = imageRef.current
-    const aspectRatio = img.naturalWidth / img.naturalHeight
-    let drawWidth = size
-    let drawHeight = size
+    // Apply transformations
+    ctx.translate(size / 2, size / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(scale, scale);
+    ctx.translate(-size / 2 + position.x / 2, -size / 2 + position.y / 2);
+
+    const img = imageRef.current;
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    let drawWidth = size;
+    let drawHeight = size;
 
     if (aspectRatio > 1) {
-      drawHeight = size
-      drawWidth = size * aspectRatio
+      drawHeight = size;
+      drawWidth = size * aspectRatio;
     } else {
-      drawWidth = size
-      drawHeight = size / aspectRatio
+      drawWidth = size;
+      drawHeight = size / aspectRatio;
     }
 
-    const offsetX = (size - drawWidth) / 2
-    const offsetY = (size - drawHeight) / 2
+    const offsetX = (size - drawWidth) / 2;
+    const offsetY = (size - drawHeight) / 2;
 
-    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
-    ctx.restore()
+    // Draw the image
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    ctx.restore();
 
+    // Convert to blob
     canvas.toBlob(
       (blob) => {
-        if (blob) onCropComplete(blob)
+        if (blob) onCropComplete(blob);
       },
-      "image/jpeg",
-      0.9,
-    )
-  }
+      "image/png",
+      1.0
+    );
+  };
 
   return (
     <motion.div
@@ -160,8 +170,20 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
                 <circle cx="50%" cy="50%" r="120" fill="black" />
               </mask>
             </defs>
-            <rect width="100%" height="100%" fill="rgba(0,0,0,0.7)" mask="url(#circleMask)" />
-            <circle cx="50%" cy="50%" r="120" fill="none" stroke="#32cd32" strokeWidth="2" />
+            <rect
+              width="100%"
+              height="100%"
+              fill="rgba(0,0,0,0.7)"
+              mask="url(#circleMask)"
+            />
+            <circle
+              cx="50%"
+              cy="50%"
+              r="120"
+              fill="none"
+              stroke="#32cd32"
+              strokeWidth="2"
+            />
           </svg>
         </div>
       </div>
@@ -206,5 +228,5 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
       {/* Hidden canvas for cropping */}
       <canvas ref={canvasRef} className="hidden" />
     </motion.div>
-  )
+  );
 }

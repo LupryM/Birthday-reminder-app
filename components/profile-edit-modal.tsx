@@ -189,16 +189,17 @@ export function ProfileEditModal({
           {/* Avatar Section - FIXED */}
           <div className="flex flex-col items-center">
             <div className="relative w-24 h-24">
-              {/* Fixed: Proper circular clipping with no gaps */}
-              <div className="w-full h-full rounded-full overflow-hidden bg-card">
-                <img
-                  src={avatarPreview || "https://via.placeholder.com/150"}
-                  alt={name}
-                  className="w-full h-full object-cover"
-                />
+              {/* Container with ring as border */}
+              <div className="w-full h-full rounded-full p-1 bg-gradient-to-br from-primary to-primary/70">
+                {/* Image container with proper clipping */}
+                <div className="w-full h-full rounded-full overflow-hidden bg-card">
+                  <img
+                    src={avatarPreview || "https://via.placeholder.com/150"}
+                    alt={name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
-              {/* Ring overlay on top */}
-              <div className="absolute inset-0 rounded-full border-4 border-primary pointer-events-none" />
 
               <motion.button
                 whileTap={{ scale: 0.9 }}
@@ -219,7 +220,6 @@ export function ProfileEditModal({
               Tap to change photo
             </p>
           </div>
-
           {/* Name */}
           <div className="space-y-2">
             <label className="text-xs text-muted-foreground uppercase tracking-wide">

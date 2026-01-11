@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
   return (
@@ -9,8 +9,12 @@ export default function LandingPage() {
         <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl">🦍</span>
         </div>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Rise of the Apes</h1>
-        <p className="text-muted-foreground mt-2">Birthday tracker for the squad</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          Rise of the Apes
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Birthday tracker for the apes
+        </p>
       </div>
 
       {/* Action buttons */}
@@ -34,5 +38,5 @@ export default function LandingPage() {
         Track birthdays. Share wishlists. Surprise your friends.
       </p>
     </div>
-  )
+  );
 }

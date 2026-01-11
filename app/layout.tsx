@@ -8,7 +8,7 @@ const _inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Rise of the Apes - Birthday & Wishlist",
-  description: "The official birthday tracker for the squad.",
+  description: "The official birthday tracker for the apes.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

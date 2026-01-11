@@ -13,7 +13,7 @@ export default function SignUpSuccessPage() {
 
         <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
         <p className="text-muted-foreground mt-3">
-          We've sent you a confirmation link. Click it to activate your account and join the squad.
+          We've sent you a confirmation link. Click it to activate your account and join the apes.
         </p>
 
         <Link href="/auth/login" className="block mt-8">
