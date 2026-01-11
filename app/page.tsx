@@ -33,10 +33,6 @@ export default function LandingPage() {
           </Button>
         </Link>
       </div>
-
-      <p className="text-muted-foreground text-sm mt-8 text-center">
-        Track birthdays. Share wishlists. Surprise your friends.
-      </p>
     </div>
   );
 }

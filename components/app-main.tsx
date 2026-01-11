@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navigation } from "@/components/navigation";
 import { BirthdayList } from "@/components/birthday-list";
 import { ProfileView } from "@/components/profile-view";
@@ -8,6 +9,7 @@ import { WishlistView } from "@/components/wishlist-view";
 import { FriendsGrid } from "@/components/friends-grid";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { ChatView } from "@/components/chat-view";
+import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -78,6 +80,12 @@ function sortByUpcomingBirthday(profiles: Profile[]): Profile[] {
   );
 }
 
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
 export function AppMain({
   userId,
   currentProfile,
@@ -99,41 +107,49 @@ export function AppMain({
     [allProfiles]
   );
 
-  const handleTabChange = (tab: "home" | "profile" | "friends") => {
+  const upcomingBirthdaysCount = useMemo(() => {
+    return allProfiles.filter((p) => getDaysUntilBirthday(p.birthday) <= 7)
+      .length;
+  }, [allProfiles]);
+
+  const handleTabChange = useCallback((tab: "home" | "profile" | "friends") => {
     setActiveTab(tab);
     setViewState({ type: tab });
-  };
+  }, []);
 
-  const handleSelectFriend = async (profile: Profile) => {
+  const handleSelectFriend = useCallback(async (profile: Profile) => {
     setViewState({ type: "friend-profile", friend: profile });
-  };
+  }, []);
 
-  const handleViewFriendWishlist = async (friend: Profile) => {
-    const { data: items } = await supabase
-      .from("wishlist_items")
-      .select(
-        "*, purchased_by_profile:profiles!wishlist_items_purchased_by_fkey(name)"
-      )
-      .eq("user_id", friend.id);
+  const handleViewFriendWishlist = useCallback(
+    async (friend: Profile) => {
+      const { data: items } = await supabase
+        .from("wishlist_items")
+        .select(
+          "*, purchased_by_profile:profiles!wishlist_items_purchased_by_fkey(name)"
+        )
+        .eq("user_id", friend.id);
 
-    setViewState({ type: "friend-wishlist", friend, items: items || [] });
-  };
+      setViewState({ type: "friend-wishlist", friend, items: items || [] });
+    },
+    [supabase]
+  );
 
-  const handleViewOwnWishlist = () => {
+  const handleViewOwnWishlist = useCallback(() => {
     setViewState({ type: "my-wishlist" });
-  };
+  }, []);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setViewState({ type: activeTab });
-  };
+  }, [activeTab]);
 
-  const handleBackToFriendProfile = (friend: Profile) => {
+  const handleBackToFriendProfile = useCallback((friend: Profile) => {
     setViewState({ type: "friend-profile", friend });
-  };
+  }, []);
 
-  const handleSendMessage = (friend: Profile) => {
+  const handleSendMessage = useCallback((friend: Profile) => {
     setViewState({ type: "chat", friend });
-  };
+  }, []);
 
   const handleTogglePurchased = async (
     itemId: string,
@@ -217,9 +233,7 @@ export function AppMain({
   };
 
   const handleDeleteAccount = async () => {
-    // Delete profile (cascades to wishlist, messages, etc.)
     await supabase.from("profiles").delete().eq("id", userId);
-    // Sign out
     await supabase.auth.signOut();
     router.push("/");
   };
@@ -259,6 +273,7 @@ export function AppMain({
     wishlist: [],
   }));
 
+  // Chat view - full screen without navigation
   if (viewState.type === "chat") {
     return (
       <ChatView
@@ -289,15 +304,27 @@ export function AppMain({
     };
 
     return (
-      <div className="min-h-screen bg-background">
-        <ProfileView
-          person={friend}
-          isOwnProfile={false}
-          onViewWishlist={() => handleViewFriendWishlist(viewState.friend)}
-          onBack={handleBack}
-          onSendMessage={() => handleSendMessage(viewState.friend)}
+      <div className="min-h-screen bg-background no-pull-refresh">
+        <motion.div
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+          transition={{ duration: 0.2 }}
+        >
+          <ProfileView
+            person={friend}
+            isOwnProfile={false}
+            onViewWishlist={() => handleViewFriendWishlist(viewState.friend)}
+            onBack={handleBack}
+            onSendMessage={() => handleSendMessage(viewState.friend)}
+          />
+        </motion.div>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          notificationCount={upcomingBirthdaysCount}
         />
-        <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     );
   }
@@ -322,17 +349,29 @@ export function AppMain({
     };
 
     return (
-      <div className="min-h-screen bg-background">
-        <WishlistView
-          person={friend}
-          isOwnWishlist={false}
-          onBack={() => handleBackToFriendProfile(viewState.friend)}
-          onTogglePurchased={(itemId) => {
-            const item = viewState.items.find((i) => i.id === itemId);
-            if (item) handleTogglePurchased(itemId, item.purchased);
-          }}
+      <div className="min-h-screen bg-background no-pull-refresh">
+        <motion.div
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+          transition={{ duration: 0.2 }}
+        >
+          <WishlistView
+            person={friend}
+            isOwnWishlist={false}
+            onBack={() => handleBackToFriendProfile(viewState.friend)}
+            onTogglePurchased={(itemId) => {
+              const item = viewState.items.find((i) => i.id === itemId);
+              if (item) handleTogglePurchased(itemId, item.purchased);
+            }}
+          />
+        </motion.div>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          notificationCount={upcomingBirthdaysCount}
         />
-        <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     );
   }
@@ -340,15 +379,27 @@ export function AppMain({
   // Own wishlist view
   if (viewState.type === "my-wishlist" && user) {
     return (
-      <div className="min-h-screen bg-background">
-        <WishlistView
-          person={user}
-          isOwnWishlist={true}
-          onBack={handleBack}
-          onAddItem={handleAddItem}
-          onDeleteItem={handleDeleteItem}
+      <div className="min-h-screen bg-background no-pull-refresh">
+        <motion.div
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+          transition={{ duration: 0.2 }}
+        >
+          <WishlistView
+            person={user}
+            isOwnWishlist={true}
+            onBack={handleBack}
+            onAddItem={handleAddItem}
+            onDeleteItem={handleDeleteItem}
+          />
+        </motion.div>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          notificationCount={upcomingBirthdaysCount}
         />
-        <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     );
   }
@@ -358,69 +409,86 @@ export function AppMain({
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 bg-background/95 backdrop-blur-xl z-10 border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">
-              Rise of the Apes
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Birthday tracker for the apes
-            </p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background pb-28 no-pull-refresh">
+      <AppHeader userName={user.name} onLogout={handleLogout} />
 
-      {/* Main Content */}
-      <main className="max-w-md mx-auto px-4 py-6">
-        {activeTab === "home" && (
-          <BirthdayList
-            friends={friends}
-            onSelectFriend={(f) => {
-              const profile = sortedFriends.find((p) => p.id === f.id);
-              if (profile) handleSelectFriend(profile);
-            }}
-          />
-        )}
+      {/* Main Content with smooth transitions */}
+      <main className="max-w-md mx-auto px-4 py-4">
+        <AnimatePresence mode="wait">
+          {activeTab === "home" && (
+            <motion.div
+              key="home"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={pageVariants}
+              transition={{ duration: 0.2 }}
+            >
+              <BirthdayList
+                friends={friends}
+                onSelectFriend={(f) => {
+                  const profile = sortedFriends.find((p) => p.id === f.id);
+                  if (profile) handleSelectFriend(profile);
+                }}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === "profile" && (
-          <ProfileView
-            person={user}
-            isOwnProfile={true}
-            onViewWishlist={handleViewOwnWishlist}
-            onEdit={() => setShowEditModal(true)}
-          />
-        )}
+          {activeTab === "profile" && (
+            <motion.div
+              key="profile"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={pageVariants}
+              transition={{ duration: 0.2 }}
+            >
+              <ProfileView
+                person={user}
+                isOwnProfile={true}
+                onViewWishlist={handleViewOwnWishlist}
+                onEdit={() => setShowEditModal(true)}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === "friends" && (
-          <FriendsGrid
-            friends={friends}
-            onSelectFriend={(f) => {
-              const profile = sortedFriends.find((p) => p.id === f.id);
-              if (profile) handleSelectFriend(profile);
-            }}
-          />
-        )}
+          {activeTab === "friends" && (
+            <motion.div
+              key="friends"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={pageVariants}
+              transition={{ duration: 0.2 }}
+            >
+              <FriendsGrid
+                friends={friends}
+                onSelectFriend={(f) => {
+                  const profile = sortedFriends.find((p) => p.id === f.id);
+                  if (profile) handleSelectFriend(profile);
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
-      <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
+      <Navigation
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        notificationCount={upcomingBirthdaysCount}
+      />
 
-      {showEditModal && user && (
-        <ProfileEditModal
-          profile={user}
-          onClose={() => setShowEditModal(false)}
-          onSave={handleSaveProfile}
-          onDeleteAccount={handleDeleteAccount}
-        />
-      )}
+      <AnimatePresence>
+        {showEditModal && user && (
+          <ProfileEditModal
+            profile={user}
+            onClose={() => setShowEditModal(false)}
+            onSave={handleSaveProfile}
+            onDeleteAccount={handleDeleteAccount}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
