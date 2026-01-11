@@ -1,95 +1,121 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef } from "react"
-import { X, Camera, Trash2, Loader2 } from "lucide-react"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { AvatarRing } from "@/components/avatar-ring"
-import { ImageCropper } from "@/components/image-cropper"
-import { NotificationToggle } from "@/components/notification-toggle"
-import { createClient } from "@/lib/supabase/client"
+import type React from "react";
+import { useState, useRef } from "react";
+import { X, Camera, Trash2, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ImageCropper } from "@/components/image-cropper";
+import { NotificationToggle } from "@/components/notification-toggle";
+import { createClient } from "@/lib/supabase/client";
 
 interface ProfileEditModalProps {
   profile: {
-    id: string
-    name: string
-    avatar: string
-    birthday: Date
-    role?: string
-  }
-  onClose: () => void
-  onSave: (updates: { name: string; birthday: string; role: string; avatar_url?: string }) => Promise<void>
-  onDeleteAccount: () => void
+    id: string;
+    name: string;
+    avatar: string;
+    birthday: Date;
+    role?: string;
+  };
+  onClose: () => void;
+  onSave: (updates: {
+    name: string;
+    birthday: string;
+    role: string;
+    avatar_url?: string;
+  }) => Promise<void>;
+  onDeleteAccount: () => void;
 }
 
-export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: ProfileEditModalProps) {
-  const [name, setName] = useState(profile.name)
-  const [birthday, setBirthday] = useState(profile.birthday.toISOString().split("T")[0])
-  const [role, setRole] = useState(profile.role || "")
-  const [avatarPreview, setAvatarPreview] = useState(profile.avatar)
-  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showCropper, setShowCropper] = useState(false)
-  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
+export function ProfileEditModal({
+  profile,
+  onClose,
+  onSave,
+  onDeleteAccount,
+}: ProfileEditModalProps) {
+  const [name, setName] = useState(profile.name);
+  const [birthday, setBirthday] = useState(
+    profile.birthday.toISOString().split("T")[0]
+  );
+  const [role, setRole] = useState(profile.role || "");
+  const [avatarPreview, setAvatarPreview] = useState(profile.avatar);
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        setRawImageSrc(e.target?.result as string)
-        setShowCropper(true)
-      }
-      reader.readAsDataURL(file)
+        setRawImageSrc(e.target?.result as string);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleCropComplete = (blob: Blob) => {
-    setCroppedBlob(blob)
-    setAvatarPreview(URL.createObjectURL(blob))
-    setShowCropper(false)
-    setRawImageSrc(null)
-  }
+    setCroppedBlob(blob);
+    setAvatarPreview(URL.createObjectURL(blob));
+    setShowCropper(false);
+    setRawImageSrc(null);
+  };
 
   const handleCropCancel = () => {
-    setShowCropper(false)
-    setRawImageSrc(null)
-  }
+    setShowCropper(false);
+    setRawImageSrc(null);
+  };
 
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
-      let avatar_url: string | undefined
+      let avatar_url: string | undefined;
 
       if (croppedBlob) {
-        const fileName = `${profile.id}-${Date.now()}.jpg`
-        const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, croppedBlob, {
-          upsert: true,
-          contentType: "image/jpeg",
-        })
+        const fileName = `${profile.id}-${Date.now()}.jpg`;
 
-        if (!uploadError) {
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(fileName, croppedBlob, {
+            upsert: true,
+            contentType: "image/jpeg",
+          });
+
+        if (uploadError) {
+          console.error("Error uploading avatar:", uploadError);
+          alert("Failed to upload image. Check console for details.");
+        } else {
           const {
             data: { publicUrl },
-          } = supabase.storage.from("avatars").getPublicUrl(fileName)
-          avatar_url = publicUrl
+          } = supabase.storage.from("avatars").getPublicUrl(fileName);
+          avatar_url = publicUrl;
         }
       }
 
-      await onSave({ name, birthday, role, avatar_url })
-      onClose()
+      await onSave({ name, birthday, role, avatar_url });
+      onClose();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("An error occurred while saving your profile.");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   if (showCropper && rawImageSrc) {
-    return <ImageCropper imageSrc={rawImageSrc} onCropComplete={handleCropComplete} onCancel={handleCropCancel} />
+    return (
+      <ImageCropper
+        imageSrc={rawImageSrc}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+      />
+    );
   }
 
   if (showDeleteConfirm) {
@@ -105,9 +131,12 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
           animate={{ scale: 1, opacity: 1 }}
           className="bg-card border border-border rounded-3xl w-full max-w-sm p-6"
         >
-          <h2 className="text-xl font-bold text-foreground text-center mb-2">Delete Account?</h2>
+          <h2 className="text-xl font-bold text-foreground text-center mb-2">
+            Delete Account?
+          </h2>
           <p className="text-muted-foreground text-center text-sm mb-6">
-            This will permanently delete your profile, wishlist, and all messages. This action cannot be undone.
+            This will permanently delete your profile, wishlist, and all
+            messages. This action cannot be undone.
           </p>
           <div className="space-y-3">
             <Button
@@ -127,7 +156,7 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
           </div>
         </motion.div>
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -157,10 +186,20 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Avatar */}
+          {/* Avatar Section - FIXED */}
           <div className="flex flex-col items-center">
-            <div className="relative">
-              <AvatarRing src={avatarPreview} alt={name} size="xl" showRing />
+            <div className="relative w-24 h-24">
+              {/* Fixed: Proper circular clipping with no gaps */}
+              <div className="w-full h-full rounded-full overflow-hidden bg-card">
+                <img
+                  src={avatarPreview || "https://via.placeholder.com/150"}
+                  alt={name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {/* Ring overlay on top */}
+              <div className="absolute inset-0 rounded-full border-4 border-primary pointer-events-none" />
+
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => fileInputRef.current?.click()}
@@ -168,14 +207,24 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
               >
                 <Camera className="w-4 h-4 text-primary-foreground" />
               </motion.button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Tap to change photo</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Tap to change photo
+            </p>
           </div>
 
           {/* Name */}
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Name</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wide">
+              Name
+            </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -186,7 +235,9 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
 
           {/* Role */}
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Role in the Apes</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wide">
+              Role in the Apes
+            </label>
             <Input
               value={role}
               onChange={(e) => setRole(e.target.value)}
@@ -197,7 +248,9 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
 
           {/* Birthday */}
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Birthday</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wide">
+              Birthday
+            </label>
             <Input
               type="date"
               value={birthday}
@@ -208,7 +261,9 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
 
           {/* Notifications */}
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wide">Notifications</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wide">
+              Notifications
+            </label>
             <NotificationToggle />
           </div>
 
@@ -241,5 +296,5 @@ export function ProfileEditModal({ profile, onClose, onSave, onDeleteAccount }: 
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
